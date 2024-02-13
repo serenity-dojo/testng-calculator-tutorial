@@ -1,10 +1,15 @@
 package serenitydojo.testng.calculator;
 
 import com.serenitydojo.calculator.Calculator;
-import org.assertj.core.api.Assertions;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -12,45 +17,59 @@ public class AdditionTest {
 
     Calculator calculator;
 
-    @BeforeMethod( alwaysRun = true )
-    void setupCalculator() {
-        calculator = new Calculator();
-        System.out.println("SETTING UP THE CALCULATOR");
-    }
-
-    Calculator calc4;
-
-    @BeforeMethod
-    void setupCalc4() {
-        calc4 = new Calculator();
-        System.out.println("SETTING UP CALC 4");
+    @Parameters({"locale"})
+    @BeforeMethod(alwaysRun = true)
+    void setupCalculator(String locale) {
+        System.out.println("USING LOCALE " + locale);
+        calculator = new Calculator(Locale.forLanguageTag(locale));
     }
 
     @Test
-    void shouldAddFourNumbers() {
-        System.out.println("ADDING 4 NUMBERS");
-
-        int sum = calc4.add(1,2,3,4);
-
-        assertThat(sum).isEqualTo(10);
+    void testLocale() {
+        assertThat(calculator.add(1,2)).isEqualTo(3);
     }
 
-    @Test(groups = {"addition"})
-    void shouldAddTwoNumbers() {
-        System.out.println("ADDING 2 NUMBERS");
-
-        int sum = calculator.add(1,2);
-
-        assertThat(sum).isEqualTo(3);
+    @DataProvider(name = "simple_additions")
+    public Object[][] simpleAdditions() {
+        return new Object[][] {
+                {1,2,3},
+                {1,3,4},
+                {2,0,2},
+                {10, -3, 7}
+        };
     }
 
-    @Test(groups = {"addition"})
-    void shouldAddThreeNumbers() {
-        System.out.println("ADDING 3 NUMBERS");
+    @DataProvider(name = "additionsCSV", parallel = true)
+    public Object[][] additionsCSVs() {
+        List<Object[]> records = new ArrayList<>();
 
-        int sum = calculator.add(1,2,3);
+        String line;
+        URL csvResource = getClass().getClassLoader().getResource("additions.csv");
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(csvResource.openStream()))) {
+            while((line = reader.readLine()) != null) {
+                String[] values =line.split(",");
+                Integer[] intValues = new Integer[4];
+                for(int i = 0; i < 4; i++) {
+                    intValues[i] = Integer.parseInt(values[i].trim());
+                }
+                records.add(intValues);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return records.toArray(new Object[][]{});
+    }
 
-        assertThat(sum).isEqualTo(6);
+    @Test(dataProvider = "simple_additions")
+    void shouldAddTwoNumber(int a, int b, int result) {
+        System.out.println("CALCULATING " + a + " + " + b);
+        assertThat(calculator.add(a,b)).isEqualTo(result);
+    }
+
+    @Test(dataProvider = "additionsCSV")
+    void shouldAddTheeeNumber(int a, int b, int c, int result) {
+        System.out.println("CALCULATING " + a + " + " + b + " + " + c);
+        assertThat(calculator.add(a,b,c)).isEqualTo(result);
     }
 
 }
